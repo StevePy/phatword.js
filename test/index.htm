@@ -1,0 +1,102 @@
+<html lang="en">
+<head>
+    <link href="./css/toastr.min.css" rel="stylesheet" />
+</head>
+<body>
+
+    <div>
+        <h3>Instructions</h3>
+        <p> Phatword is a biometric-like password enhancer to allow users to use shorter, easier passwords, yet improve their security over 
+conventional passwords. Recorded passwords can include any characters, including arrow keys, backspace, etc. For instance, a password of "1234" can be recorded as "1" "4" "left arrow" "23". To work, they must be typed exactly the same way each time. This does not record biometric timings between characters, but will provide the total time between the first and last character which can optionally be extracted and sent to a server to validate alongside a hashed password. (timing info should not be hashed.)
+        </p>
+        <p>Have a play. Note that something like this would be geared towards internal/protected web portals that are accessed from PCs, not mobile devices. (should extract and use the plain password from the input control) One last limitation is that the password input has to be on the same keyboard layout (I.e. US vs. UK etc.) as key codes for some special keys will change between keyboards.</p>
+    </div>
+
+    <div style="margin-top:10px">
+        <input type="password" id="recordText" style="width:200px" />
+        <button type="button" id="record">Record</button>
+    </div>
+    <div style="margin-top:6px">
+        <input type="password" id="testText" style="width:200px" />
+        <button type="button" id="test">Test</button>
+    </div>
+    <div style="margin-top:10px">
+        <button type="button" id="reveal">Reveal</button>
+    </div>
+    <div>
+        <textarea id="details" cols="100" rows="10" style="display:none"></textarea>
+    </div>
+</div>
+
+
+
+
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/toastr.min.js"></script>
+
+    <script type="importmap">
+        {
+            "imports" : {
+                "phatword" : "./phatword.mjs"
+            }
+        }
+    </script>
+
+
+    <script type="module">
+        import { Password, Sensitivity } from "phatword";
+
+        var recordPassword = new Password(document.getElementById('recordText'), document.getElementById('record'));
+        var testPassword = new Password(document.getElementById('testText'), document.getElementById('test'));
+        var recordedPhatword = '';
+        var recordedTime = 0;
+
+        document.getElementById('record').addEventListener("click", onRecordClick);
+        document.getElementById('test').addEventListener("click", onTestClick);
+        document.getElementById('reveal').addEventListener("click", onRevealClick);
+
+        function onRecordClick(e) {
+            recordedPhatword = recordPassword.value();
+            recordedTime = recordPassword.time();
+            document.getElementById('recordText').value = '';
+            document.getElementById('details').value = recordedPhatword;
+
+            window.setTimeout(() => document.getElementById('testText').focus(), 0);
+        }
+
+        function onTestClick(e) {
+            let phatword = testPassword.value();
+            let time = testPassword.time();
+            document.getElementById('testText').value = '';
+            document.getElementById('details').value = recordedPhatword + '\n\n' + phatword;
+
+            if (phatword === recordedPhatword && timeWithinVariance(recordedTime, time, 30)) {
+                toastr.success('Password matched.');
+            } else if (phatword === recordedPhatword) {
+                toastr.success(`Password correct, but too much time variance. ${time} vs. ${recordedTime}`);
+            } else {
+                toastr.error('Password incorrect.');
+            }
+        }
+
+        function onRevealClick(e) {
+            if (document.getElementById('details').style.display == "none") {
+                document.getElementById('details').style.display = "block";
+                document.getElementById('reveal').textContent = 'Hide';
+            } else {
+                document.getElementById('details').style.display = "none";
+                document.getElementById('reveal').textContent = 'Reveal';
+            }
+        }
+
+        function timeWithinVariance(recordedTime, actualTime, allowedVariancePercent) {
+            let delta = Math.abs(recordedTime - actualTime);
+            let variance = delta / recordedTime * 100;
+            return variance <= allowedVariancePercent;
+        }
+
+    </script>
+
+</body>
+
+</html>
